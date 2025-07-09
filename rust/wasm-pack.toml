@@ -1,0 +1,7 @@
+[package]
+name = "sqlparser-wasm"
+
+[build]
+target = "web"
+dev = false
+debug = false 

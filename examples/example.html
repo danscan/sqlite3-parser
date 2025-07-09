@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SQLParser WASM Demo</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .input-section, .output-section {
+            margin-bottom: 30px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: #555;
+        }
+        
+        textarea {
+            width: 100%;
+            min-height: 120px;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            resize: vertical;
+            box-sizing: border-box;
+        }
+        
+        textarea:focus {
+            outline: none;
+            border-color: #4CAF50;
+        }
+        
+        .buttons {
+            display: flex;
+            gap: 10px;
+            margin: 20px 0;
+            flex-wrap: wrap;
+        }
+        
+        button {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+            transition: background-color 0.3s;
+        }
+        
+        .primary-btn {
+            background-color: #4CAF50;
+            color: white;
+        }
+        
+        .primary-btn:hover {
+            background-color: #45a049;
+        }
+        
+        .secondary-btn {
+            background-color: #2196F3;
+            color: white;
+        }
+        
+        .secondary-btn:hover {
+            background-color: #1976D2;
+        }
+        
+        .danger-btn {
+            background-color: #f44336;
+            color: white;
+        }
+        
+        .danger-btn:hover {
+            background-color: #d32f2f;
+        }
+        
+        .status {
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+            font-weight: bold;
+        }
+        
+        .status.success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .status.error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .status.info {
+            background-color: #cce7ff;
+            color: #004085;
+            border: 1px solid #b8d4ff;
+        }
+        
+        .examples {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 2px solid #eee;
+        }
+        
+        .example {
+            margin-bottom: 15px;
+            padding: 10px;
+            background-color: #f8f9fa;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        
+        .example:hover {
+            background-color: #e9ecef;
+        }
+        
+        .example-title {
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 5px;
+        }
+        
+        .example-sql {
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            color: #666;
+        }
+        
+        .info-panel {
+            background-color: #e8f4f8;
+            padding: 15px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+        }
+        
+        .loader {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+        
+        .loader.show {
+            display: block;
+        }
+        
+        @media (max-width: 768px) {
+            .buttons {
+                flex-direction: column;
+            }
+            
+            button {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>SQLParser WASM Demo</h1>
+        
+        <div class="info-panel">
+            <strong>SQLite Dialect Parser</strong> - This demo shows a WebAssembly-compiled SQL parser that supports SQLite syntax. 
+            Try parsing some SQL queries and see the AST structure!
+        </div>
+        
+        <div class="loader" id="loader">
+            <p>Loading WASM module...</p>
+        </div>
+        
+        <div id="main-content" style="display: none;">
+            <div class="input-section">
+                <label for="sql-input">Enter SQL Query:</label>
+                <textarea id="sql-input" placeholder="SELECT id, name FROM users WHERE active = true">SELECT id, name FROM users WHERE active = true</textarea>
+                
+                <div class="buttons">
+                    <button class="primary-btn" onclick="parse()">Parse SQL</button>
+                    <button class="secondary-btn" onclick="validate()">Validate SQL</button>
+                    <button class="secondary-btn" onclick="getAccessInfo()">Table Access Info</button>
+                    <button class="danger-btn" onclick="clearAll()">Clear All</button>
+                </div>
+            </div>
+            
+            <div id="status" class="status" style="display: none;"></div>
+            
+            <div class="output-section">
+                <label for="output">Output:</label>
+                <textarea id="output" readonly placeholder="Results will appear here..."></textarea>
+            </div>
+            
+            <div class="examples">
+                <h3>Example Queries (Click to load):</h3>
+                
+                <div class="example" onclick="loadExample('SELECT * FROM users')">
+                    <div class="example-title">Simple SELECT</div>
+                    <div class="example-sql">SELECT * FROM users</div>
+                </div>
+                
+                <div class="example" onclick="loadExample('SELECT u.id, u.name, COUNT(p.id) as post_count FROM users u LEFT JOIN posts p ON u.id = p.user_id WHERE u.active = true GROUP BY u.id, u.name ORDER BY post_count DESC')">
+                    <div class="example-title">Complex JOIN with Aggregation</div>
+                    <div class="example-sql">SELECT u.id, u.name, COUNT(p.id) as post_count FROM users u LEFT JOIN posts p ON u.id = p.user_id WHERE u.active = true GROUP BY u.id, u.name ORDER BY post_count DESC</div>
+                </div>
+                
+                <div class="example" onclick="loadExample('INSERT INTO users (name, email, active) VALUES (?, ?, true)')">
+                    <div class="example-title">INSERT with Parameters</div>
+                    <div class="example-sql">INSERT INTO users (name, email, active) VALUES (?, ?, true)</div>
+                </div>
+                
+                <div class="example" onclick="loadExample('UPDATE users SET active = false WHERE last_login < datetime(\'now\', \'-1 year\')')">
+                    <div class="example-title">UPDATE with SQLite Functions</div>
+                    <div class="example-sql">UPDATE users SET active = false WHERE last_login < datetime("now", "-1 year")</div>
+                </div>
+                
+                <div class="example" onclick="loadExample('CREATE TABLE posts (id INTEGER PRIMARY KEY, title TEXT NOT NULL, content TEXT, user_id INTEGER REFERENCES users(id))')">
+                    <div class="example-title">CREATE TABLE</div>
+                    <div class="example-sql">CREATE TABLE posts (id INTEGER PRIMARY KEY, title TEXT NOT NULL, content TEXT, user_id INTEGER REFERENCES users(id))</div>
+                </div>
+                
+                <div class="example" onclick="loadExample('WITH recent_posts AS (SELECT * FROM posts WHERE created_at > datetime(\'now\', \'-1 month\')) SELECT u.name, COUNT(rp.id) FROM users u JOIN recent_posts rp ON u.id = rp.user_id GROUP BY u.id')">
+                    <div class="example-title">CTE (Common Table Expression)</div>
+                    <div class="example-sql">WITH recent_posts AS (SELECT * FROM posts WHERE created_at > datetime("now", "-1 month")) SELECT u.name, COUNT(rp.id) FROM users u JOIN recent_posts rp ON u.id = rp.user_id GROUP BY u.id</div>
+                </div>
+                
+                <div class="example" onclick="loadExample('UPDATE users SET last_active = datetime(\'now\') WHERE id IN (SELECT user_id FROM sessions WHERE created_at > datetime(\'now\', \'-1 hour\'))')">
+                    <div class="example-title">Mixed Read/Write Access</div>
+                    <div class="example-sql">UPDATE users SET last_active = datetime("now") WHERE id IN (SELECT user_id FROM sessions WHERE created_at > datetime("now", "-1 hour"))</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+    import init, { access, parse, validate, version } from '../rust/pkg/sqlparser_wasm.js';
+        
+        let wasmInitialized = false;
+        
+        async function initWasm() {
+            try {
+                await init();
+                wasmInitialized = true;
+                document.getElementById('loader').classList.remove('show');
+                document.getElementById('main-content').style.display = 'block';
+                showStatus(`SQLParser WASM v${version()} loaded successfully!`, 'success');
+            } catch (error) {
+                showStatus(`Failed to load WASM module: ${error}`, 'error');
+            }
+        }
+        
+        function showStatus(message, type) {
+            const statusEl = document.getElementById('status');
+            statusEl.textContent = message;
+            statusEl.className = `status ${type}`;
+            statusEl.style.display = 'block';
+            
+            if (type === 'success' || type === 'info') {
+                setTimeout(() => {
+                    statusEl.style.display = 'none';
+                }, 3000);
+            }
+        }
+        
+        function getSQL() {
+            return document.getElementById('sql-input').value.trim();
+        }
+        
+        function setOutput(text) {
+            document.getElementById('output').value = text;
+        }
+        
+        window.parse = function() {
+            if (!wasmInitialized) {
+                showStatus('WASM module not loaded yet', 'error');
+                return;
+            }
+            
+            const sql = getSQL();
+            if (!sql) {
+                showStatus('Please enter a SQL query', 'error');
+                return;
+            }
+            
+            try {
+                const result = parse(sql);
+                if (result.success) {
+                    const ast = JSON.parse(result.json);
+                    setOutput(JSON.stringify(ast, null, 2));
+                    showStatus(`Successfully parsed ${result.count} statement(s)`, 'success');
+                } else {
+                    setOutput(`Parse Error: ${result.error}`);
+                    showStatus('Parse failed', 'error');
+                }
+            } catch (error) {
+                setOutput(`Error: ${error.message}`);
+                showStatus('An error occurred while parsing', 'error');
+            }
+        };
+        
+        window.validate = function() {
+            if (!wasmInitialized) {
+                showStatus('WASM module not loaded yet', 'error');
+                return;
+            }
+            
+            const sql = getSQL();
+            if (!sql) {
+                showStatus('Please enter a SQL query', 'error');
+                return;
+            }
+            
+            try {
+                const isValid = validate(sql);
+                if (isValid) {
+                    setOutput('✅ SQL is valid');
+                    showStatus('SQL is valid', 'success');
+                } else {
+                    setOutput('❌ SQL is invalid');
+                    showStatus('SQL is invalid', 'error');
+                }
+            } catch (error) {
+                setOutput(`Error: ${error.message}`);
+                showStatus('An error occurred while validating', 'error');
+            }
+        };
+        
+        window.getAccessInfo = function() {
+            if (!wasmInitialized) {
+                showStatus('WASM module not loaded yet', 'error');
+                return;
+            }
+            
+            const sql = getSQL();
+            if (!sql) {
+                showStatus('Please enter a SQL query', 'error');
+                return;
+            }
+            
+            try {
+                const accessInfoJson = access(sql);
+                const accessInfo = JSON.parse(accessInfoJson);
+                if (accessInfo.tables && accessInfo.tables.length > 0) {
+                    const output = 'Table Access Information:\n' + 
+                        accessInfo.tables.map(t => `• ${t.name} (${t.access})`).join('\n');
+                    setOutput(output);
+                    showStatus(`Found access info for ${accessInfo.tables.length} table(s)`, 'success');
+                } else {
+                    setOutput('No table access information found');
+                    showStatus('No table access info found', 'info');
+                }
+            } catch (error) {
+                setOutput(`Error: ${error.message}`);
+                showStatus('An error occurred while extracting table access info', 'error');
+            }
+        };
+        
+        window.clearAll = function() {
+            document.getElementById('sql-input').value = '';
+            document.getElementById('output').value = '';
+            document.getElementById('status').style.display = 'none';
+        };
+        
+        window.loadExample = function(sql) {
+            document.getElementById('sql-input').value = sql;
+            document.getElementById('output').value = '';
+            document.getElementById('status').style.display = 'none';
+        };
+        
+        // Initialize WASM when page loads
+        document.getElementById('loader').classList.add('show');
+        initWasm();
+    </script>
+</body>
+</html> 
