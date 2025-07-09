@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SQLite3 Parser - Demo</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #0f0f0f 0%, #1a1a1a 100%);
+            color: #e4e4e7;
+            min-height: 100vh;
+            line-height: 1.6;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+        
+        .header h1 {
+            font-size: 3rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #ffffff 0%, #a1a1aa 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 1rem;
+        }
+        
+        .header p {
+            font-size: 1.25rem;
+            color: #a1a1aa;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        
+        .features {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 3rem;
+        }
+        
+        .feature {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 1.5rem;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+        
+        .feature:hover {
+            background: rgba(255, 255, 255, 0.08);
+            transform: translateY(-2px);
+        }
+        
+        .feature h3 {
+            color: #ffffff;
+            margin-bottom: 0.5rem;
+        }
+        
+        .feature p {
+            color: #a1a1aa;
+            font-size: 0.9rem;
+        }
+
+        .feature a {
+            color: #fff;
+            text-decoration: none;
+        }
+
+        .feature a:hover {
+            text-decoration: underline;
+        }
+        
+        .demo-section {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            backdrop-filter: blur(10px);
+        }
+        
+        .input-section {
+            margin-bottom: 2rem;
+        }
+        
+        label {
+            display: block;
+            font-weight: 600;
+            color: #ffffff;
+            margin-bottom: 0.5rem;
+        }
+        
+        textarea {
+            width: 100%;
+            min-height: 140px;
+            padding: 1rem;
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            color: #ffffff;
+            font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, monospace;
+            font-size: 14px;
+            resize: vertical;
+            transition: all 0.3s ease;
+        }
+        
+        #output {
+            min-height: 200px;
+            font-size: 12px;
+        }
+        
+        textarea:focus {
+            outline: none;
+            border-color: #0070f3;
+            box-shadow: 0 0 0 3px rgba(0, 112, 243, 0.1);
+        }
+        
+        textarea::placeholder {
+            color: #71717a;
+        }
+        
+        .buttons {
+            display: flex;
+            gap: 1rem;
+            margin: 1.5rem 0;
+            flex-wrap: wrap;
+        }
+        
+        button {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .primary-btn {
+            background: linear-gradient(135deg, #0070f3 0%, #0051cc 100%);
+            color: white;
+        }
+        
+        .primary-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0, 112, 243, 0.3);
+        }
+        
+        .secondary-btn {
+            background: rgba(255, 255, 255, 0.1);
+            color: #ffffff;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .secondary-btn:hover {
+            background: rgba(255, 255, 255, 0.15);
+            transform: translateY(-1px);
+        }
+        
+        .danger-btn {
+            background: rgba(239, 68, 68, 0.1);
+            color: #ef4444;
+            border: 1px solid rgba(239, 68, 68, 0.3);
+        }
+        
+        .danger-btn:hover {
+            background: rgba(239, 68, 68, 0.2);
+            transform: translateY(-1px);
+        }
+        
+        .status {
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 1.5rem;
+            font-weight: 500;
+            display: none;
+        }
+        
+        .status.success {
+            background: rgba(34, 197, 94, 0.1);
+            color: #22c55e;
+            border: 1px solid rgba(34, 197, 94, 0.3);
+        }
+        
+        .status.error {
+            background: rgba(239, 68, 68, 0.1);
+            color: #ef4444;
+            border: 1px solid rgba(239, 68, 68, 0.3);
+        }
+        
+        .status.info {
+            background: rgba(59, 130, 246, 0.1);
+            color: #3b82f6;
+            border: 1px solid rgba(59, 130, 246, 0.3);
+        }
+        
+        .loader {
+            display: none;
+            text-align: center;
+            padding: 2rem;
+        }
+        
+        .loader.show {
+            display: block;
+        }
+        
+        .loader-spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid rgba(255, 255, 255, 0.1);
+            border-top: 3px solid #0070f3;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 1rem;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .examples {
+            margin-top: 2rem;
+        }
+        
+        .examples h3 {
+            color: #ffffff;
+            margin-bottom: 1rem;
+            font-size: 1.2rem;
+        }
+        
+        .examples-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1rem;
+        }
+        
+        .example {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            padding: 1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .example:hover {
+            background: rgba(255, 255, 255, 0.08);
+            border-color: rgba(255, 255, 255, 0.2);
+            transform: translateY(-1px);
+        }
+        
+        .example-title {
+            font-weight: 600;
+            color: #ffffff;
+            margin-bottom: 0.5rem;
+        }
+        
+        .example-sql {
+            font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, monospace;
+            font-size: 12px;
+            color: #a1a1aa;
+            line-height: 1.4;
+            overflow-wrap: break-word;
+        }
+        
+        .footer {
+            text-align: center;
+            padding: 2rem 0;
+            color: #71717a;
+            font-size: 0.9rem;
+        }
+        
+        .footer a {
+            color: #0070f3;
+            text-decoration: none;
+        }
+        
+        .footer a:hover {
+            text-decoration: underline;
+        }
+        
+        @media (max-width: 768px) {
+            .container {
+                padding: 1rem;
+            }
+            
+            .header h1 {
+                font-size: 2.5rem;
+            }
+            
+            .buttons {
+                flex-direction: column;
+            }
+            
+            button {
+                width: 100%;
+                justify-content: center;
+            }
+            
+            .features {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 0.75rem;
+                margin-bottom: 2rem;
+            }
+            
+            .feature {
+                padding: 1rem;
+                border-radius: 8px;
+            }
+            
+            .feature h3 {
+                font-size: 0.9rem;
+                margin-bottom: 0.25rem;
+            }
+            
+            .feature p {
+                font-size: 0.8rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>SQLite3 Parser</h1>
+            <p>A type-safe bi-directional SQL parser backed by Rust and WebAssembly</p>
+        </div>
+        
+        <div class="features">
+            <div class="feature">
+                <h3>⚡ Fast</h3>
+                <p>Backed by <a href="https://github.com/apache/datafusion-sqlparser-rs" target="_blank">sqlparser-rs</a> (rust), compiled to wasm with a TypeScript interface</p>
+            </div>
+            <div class="feature">
+                <h3>🔒 Type-Safe</h3>
+                <p>Full TypeScript definitions for AST structures</p>
+            </div>
+            <div class="feature">
+                <h3>🔄 Bidirectional</h3>
+                <p>SQL → AST and AST → SQL conversion</p>
+            </div>
+            <div class="feature">
+                <h3>📊 Access Info</h3>
+                <p>Get read vs write access info for each table</p>
+            </div>
+        </div>
+        
+        <div class="loader" id="loader">
+            <div class="loader-spinner"></div>
+            <p>Loading parser...</p>
+        </div>
+        
+        <div id="main-content" style="display: none;">
+            <div class="demo-section">
+                <div class="input-section">
+                    <label for="sql-input">Enter SQL Query</label>
+                    <textarea 
+                        id="sql-input" 
+                        placeholder="SELECT id, name FROM users WHERE active = true"
+                    >SELECT id, name FROM users WHERE active = true</textarea>
+                    
+                    <div class="buttons">
+                        <button class="primary-btn" onclick="parse()">
+                            Parse SQL
+                        </button>
+                        <button class="secondary-btn" onclick="validate()">
+                            Validate
+                        </button>
+                        <button class="secondary-btn" onclick="getAccessInfo()">
+                            Table Access
+                        </button>
+                        <button class="danger-btn" onclick="clearAll()">
+                            Clear
+                        </button>
+                    </div>
+                </div>
+                
+                <div id="status" class="status"></div>
+                
+                <div class="input-section">
+                    <label for="output">Output</label>
+                    <textarea id="output" readonly placeholder="Results will appear here..."></textarea>
+                </div>
+            </div>
+            
+            <div class="examples">
+                <h3>Example Queries</h3>
+                <div class="examples-grid">
+                    <div class="example" onclick="loadExample('SELECT * FROM users')">
+                        <div class="example-title">Simple SELECT</div>
+                        <div class="example-sql">Basic query to retrieve all columns from a single table</div>
+                    </div>
+                    
+                    <div class="example" onclick="loadExample('SELECT u.id, u.name, COUNT(p.id) as post_count FROM users u LEFT JOIN posts p ON u.id = p.user_id WHERE u.active = true GROUP BY u.id, u.name ORDER BY post_count DESC')">
+                        <div class="example-title">Complex JOIN</div>
+                        <div class="example-sql">Aggregates user post counts with LEFT JOIN, filtering, grouping, and ordering</div>
+                    </div>
+                    
+                    <div class="example" onclick="loadExample('INSERT INTO users (name, email, active) VALUES (?, ?, true)')">
+                        <div class="example-title">INSERT Statement</div>
+                        <div class="example-sql">Inserts new user record with parameterized values and literals</div>
+                    </div>
+                    
+                    <div class="example" onclick="loadExample('UPDATE users SET last_active = datetime(\'now\'), activity_score = (SELECT COUNT(*) * 10 + COALESCE(SUM(likes), 0) FROM posts p LEFT JOIN post_likes pl ON p.id = pl.post_id WHERE p.user_id = users.id AND p.created_at > datetime(\'now\', \'-1 month\')) WHERE id IN (SELECT DISTINCT s.user_id FROM sessions s JOIN user_preferences up ON s.user_id = up.user_id WHERE s.created_at > datetime(\'now\', \'-1 hour\') AND up.notifications_enabled = true)')">
+                        <div class="example-title">Complex Mixed Access</div>
+                        <div class="example-sql">Updates user activity scores based on recent posts and likes, filtering by active sessions and preferences</div>
+                    </div>
+                    
+                    <div class="example" onclick="loadExample('CREATE TABLE posts (id INTEGER PRIMARY KEY, title TEXT NOT NULL, content TEXT, user_id INTEGER REFERENCES users(id))')">
+                        <div class="example-title">CREATE TABLE</div>
+                        <div class="example-sql">Creates table with primary key, constraints, and foreign key reference</div>
+                    </div>
+                    
+                    <div class="example" onclick="loadExample('WITH recent_posts AS (SELECT * FROM posts WHERE created_at > datetime(\'now\', \'-1 month\')) SELECT u.name, COUNT(rp.id) FROM users u JOIN recent_posts rp ON u.id = rp.user_id GROUP BY u.id')">
+                        <div class="example-title">Common Table Expression</div>
+                        <div class="example-sql">Uses CTE to filter recent posts, then joins with users for aggregation</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <p>
+                Built with <a href="https://github.com/apache/datafusion-sqlparser-rs" target="_blank">sqlparser-rs</a> 
+                and WebAssembly
+            </p>
+        </div>
+    </div>
+
+    <script type="module">
+        import { parseSQL, validateSQL, getSQLAccessInfo, version } from 'https://esm.sh/@danscan/sqlite3-parser@0.1.2';
+        
+        let parserInitialized = false;
+        
+        async function initParser() {
+            try {
+                const ver = await version();
+                parserInitialized = true;
+                document.getElementById('loader').classList.remove('show');
+                document.getElementById('main-content').style.display = 'block';
+                showStatus(`SQLParser v${ver} loaded successfully!`, 'success');
+            } catch (error) {
+                showStatus(`Failed to load parser: ${error}`, 'error');
+                console.error('Parser init error:', error);
+            }
+        }
+        
+        function showStatus(message, type) {
+            const statusEl = document.getElementById('status');
+            statusEl.textContent = message;
+            statusEl.className = `status ${type}`;
+            statusEl.style.display = 'block';
+            
+            if (type === 'success' || type === 'info') {
+                setTimeout(() => {
+                    statusEl.style.display = 'none';
+                }, 3000);
+            }
+        }
+        
+        function getSQL() {
+            return document.getElementById('sql-input').value.trim();
+        }
+        
+        function setOutput(text) {
+            document.getElementById('output').value = text;
+        }
+        
+        window.parse = async function() {
+            if (!parserInitialized) {
+                showStatus('Parser not loaded yet', 'error');
+                return;
+            }
+            
+            const sql = getSQL();
+            if (!sql) {
+                showStatus('Please enter a SQL query', 'error');
+                return;
+            }
+            
+            try {
+                const statements = await parseSQL(sql);
+                setOutput(JSON.stringify(statements, null, 2));
+                showStatus(`Successfully parsed ${statements.length} statement(s)`, 'success');
+            } catch (error) {
+                setOutput(`Parse Error: ${error.message}`);
+                showStatus('Parse failed', 'error');
+            }
+        };
+        
+        window.validate = async function() {
+            if (!parserInitialized) {
+                showStatus('Parser not loaded yet', 'error');
+                return;
+            }
+            
+            const sql = getSQL();
+            if (!sql) {
+                showStatus('Please enter a SQL query', 'error');
+                return;
+            }
+            
+            try {
+                const isValid = await validateSQL(sql);
+                if (isValid) {
+                    setOutput('✅ SQL is valid');
+                    showStatus('SQL is valid', 'success');
+                } else {
+                    setOutput('❌ SQL is invalid');
+                    showStatus('SQL is invalid', 'error');
+                }
+            } catch (error) {
+                setOutput(`Error: ${error.message}`);
+                showStatus('An error occurred while validating', 'error');
+            }
+        };
+        
+        window.getAccessInfo = async function() {
+            if (!parserInitialized) {
+                showStatus('Parser not loaded yet', 'error');
+                return;
+            }
+            
+            const sql = getSQL();
+            if (!sql) {
+                showStatus('Please enter a SQL query', 'error');
+                return;
+            }
+            
+            try {
+                const accessInfo = await getSQLAccessInfo(sql);
+                if (accessInfo.tables && accessInfo.tables.length > 0) {
+                    const output = 'Table Access Information:\n' + 
+                        accessInfo.tables.map(t => `• ${t.name} (${t.access})`).join('\n');
+                    setOutput(output);
+                    showStatus(`Found access info for ${accessInfo.tables.length} table(s)`, 'success');
+                } else {
+                    setOutput('No table access information found');
+                    showStatus('No table access info found', 'info');
+                }
+            } catch (error) {
+                setOutput(`Error: ${error.message}`);
+                showStatus('An error occurred while extracting table access info', 'error');
+            }
+        };
+        
+        window.clearAll = function() {
+            document.getElementById('sql-input').value = '';
+            document.getElementById('output').value = '';
+            document.getElementById('status').style.display = 'none';
+        };
+        
+        window.loadExample = function(sql) {
+            document.getElementById('sql-input').value = sql;
+            document.getElementById('output').value = '';
+            document.getElementById('status').style.display = 'none';
+            
+            // Auto-parse the example
+            setTimeout(() => {
+                parse();
+            }, 100);
+        };
+        
+        // Initialize parser when page loads
+        document.getElementById('loader').classList.add('show');
+        initParser();
+    </script>
+</body>
+</html> 
