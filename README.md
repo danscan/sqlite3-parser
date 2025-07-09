@@ -2,6 +2,8 @@
 
 A type-safe bi-directional SQL parser / AST formatter for SQLite for TypeScript, backed by the rust crate [sqlparser-rs](https://github.com/apache/datafusion-sqlparser-rs), compiled to WebAssembly.
 
+Try the [interactive demo](https://sqlite3-parser.vercel.app/) to see it in action.
+
 ## Features
 
 - **Type-Safe**: Full TypeScript definitions for AST structures
